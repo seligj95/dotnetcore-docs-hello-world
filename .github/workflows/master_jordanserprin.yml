@@ -36,13 +36,9 @@ jobs:
           dotnet build --configuration Release
           dotnet publish -c Release -o '${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/myapp' 
       # Deploy to Azure Web apps
-      - name: Run Azure webapp deploy action using service principal
-        uses: azure/webapps-deploy@v2
-        with: 
-          app-name: ${{ env.AZURE_WEBAPP_NAME }}
-          slot-name: 'Production'
-          package: '${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/myapp'
-      
+      - name: Deploy with az CLI using service principal
+        run: az webapp deploy -g jordan-ser-prin -n ${{ env.AZURE_WEBAPP_NAME }} -s production --src-path ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+        
       - name: logout
         run: |
           az logout
