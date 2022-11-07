@@ -29,10 +29,16 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }} 
           include-prerelease: true
+          
+      - name: dotnet build and publish
+        run: |
+          dotnet restore
+          dotnet build --configuration Release
+          dotnet publish -c Release -o '${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/myapp' 
 
       # Deploy to Azure Web apps
       - name: Deploy with az CLI using service principal
-        run: az webapp deploy -g jordan-ser-prin -n ${{ env.AZURE_WEBAPP_NAME }} -s production --src-path '${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/myapp'
+        run: az webapp deploy -g jordan-ser-prin -n ${{ env.AZURE_WEBAPP_NAME }} -s production --src-path myapp.zip
         
       - name: logout
         run: |
