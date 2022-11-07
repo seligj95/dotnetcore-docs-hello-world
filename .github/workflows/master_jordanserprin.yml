@@ -39,11 +39,6 @@ jobs:
           dotnet build --configuration Release
           dotnet publish -c Release -o '${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/myapp' 
           
-      - name: Download artifact
-        uses: actions/download-artifact@v2
-        with:
-          name: app
-          
       - name: Zip the app contents
         uses: papeloto/action-zip@v1
         with:
