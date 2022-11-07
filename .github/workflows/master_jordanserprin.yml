@@ -13,6 +13,9 @@ env:
   AZURE_WEBAPP_NAME: jordanserprin   # set this to your application's name
   AZURE_WEBAPP_PACKAGE_PATH: '.'      # set this to the path to your web app project, defaults to the repository root
   DOTNET_VERSION: '6.0.x'           # set this to the dot net version to use
+  ACCOUNT: mystorageaccount587878  # Does not have to exist, this will be created for you
+  CONTAINER: mycontainer587878
+  EXPIRY_TIME: 10 minutes
 
 jobs:
   build:
@@ -35,11 +38,38 @@ jobs:
           dotnet restore
           dotnet build --configuration Release
           dotnet publish -c Release -o '${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/myapp' 
+          
+      - name: Download artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: app
+          
+      - name: Zip the app contents
+        uses: papeloto/action-zip@v1
+        with:
+          files: '${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/myapp' 
+          dest: app.zip
+      
+      - name: Set SAS token expiration
+        run: echo "expiry=`date -u -d "$EXPIRY_TIME" '+%Y-%m-%dT%H:%MZ'`" >> $GITHUB_ENV
 
       # Deploy to Azure Web apps
       - name: Deploy with az CLI using service principal
-        run: az webapp deploy -g jordan-ser-prin -n ${{ env.AZURE_WEBAPP_NAME }} -s production --src-path '${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/myapp' --type zip
+        uses: azure/CLI@v1
+        with: 
+          azcliversion: 2.42.0
+          inlineScript: |
+            az extension add --name webapp
 
+            az storage account create   -n $ACCOUNT   -g jordan-ser-prin -l eastus
+            az storage container create -n $CONTAINER --account-name $ACCOUNT
+            az storage blob upload      -f app.zip    --account-name $ACCOUNT -c $CONTAINER -n $ACCOUNT
+
+            ZIP_URL=$(az storage blob generate-sas --full-uri --permissions r --expiry ${{ env.expiry }} --account-name $ACCOUNT -c $CONTAINER -n $ACCOUNT | xargs)
+
+            az webapp deploy --name $AZURE_WEBAPP_NAME --resource-group jordan-ser-prin --type zip --src-url  $ZIP_URL --async false
+
+            az storage container delete -n $CONTAINER --account-name $ACCOUNT 
         
       - name: logout
         run: |
