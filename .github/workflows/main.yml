@@ -47,7 +47,7 @@ jobs:
         run: zip -r release.zip ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/myapp
         
       - name: Deploy with az CLI using service principal
-        run: az webapp deploy -g jordan-ser-prin -n ${{ env.AZURE_WEBAPP_NAME }} -s production --src-path release.zip
+        run: az webapp deploy -g jordanmulti9 -n ${{ env.AZURE_WEBAPP_NAME }} -s production --src-path release.zip
         
       - name: logout
         run: |
