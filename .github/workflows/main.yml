@@ -17,6 +17,10 @@ env:
   AZURE_WEBAPP_NAME: mysecondaryapp-3v4pqhtw4jc4g   # set this to your application's name
   AZURE_WEBAPP_PACKAGE_PATH: '.'      # set this to the path to your web app project, defaults to the repository root
   DOTNET_VERSION: '6.0.x'           # set this to the dot net version to use
+  EXPIRY_TIME: 10 minutes
+  GROUP: jordanmulti9
+  ACCOUNT: jordan934809238  # Does not have to exist, this will be created for you
+  CONTAINER: myApp
 
 jobs:
   build:
@@ -45,9 +49,26 @@ jobs:
           
       - name: Compress app contents
         run: zip -r release.zip ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/myapp
+      
+      - name: Set SAS token expiration
+        run: echo "expiry=`date -u -d "$EXPIRY_TIME" '+%Y-%m-%dT%H:%MZ'`" >> $GITHUB_ENV
         
-      - name: Deploy with az CLI using service principal
-        run: az webapp deployment source config-zip -g jordanmulti9 -n ${{ env.AZURE_WEBAPP_NAME }} -s stage --src release.zip
+      - name: Azure CLI script
+        uses: azure/CLI@v1
+        with:
+          azcliversion: 2.42.0
+          inlineScript: |
+            az extension add --name webapp
+
+            az storage account create   -n $ACCOUNT   -g $GROUP -l eastus
+            az storage container create -n $CONTAINER --account-name $ACCOUNT
+            az storage blob upload      -f release.zip    --account-name $ACCOUNT -c $CONTAINER -n $ACCOUNT
+
+            ZIP_URL=$(az storage blob generate-sas --full-uri --permissions r --expiry ${{ env.expiry }} --account-name $ACCOUNT -c $CONTAINER -n $ACCOUNT | xargs)
+
+            az webapp deploy --name $AZURE_WEBAPP_NAME --resource-group $GROUP --type zip --src-url  $ZIP_URL --async false
+
+            az storage container delete -n $CONTAINER --account-name $ACCOUNT 
         
       - name: logout
         run: |
